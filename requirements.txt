@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+pydantic-settings
+
+# PostgreSQL (async + migration)
+SQLAlchemy==2.*
+asyncpg
+alembic
+
+# MongoDB (async)
+motor
+
+# güvenlik / rate limit
+passlib[bcrypt]
+pyjwt
+slowapi
+psycopg2-binary==2.9
