@@ -1,9 +1,24 @@
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
-engine = create_async_engine(settings.DATABASE_URL, echo=False, pool_pre_ping=True)
-AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+# psycopg ile SENKRON engine
+engine = create_engine(
+    settings.DATABASE_URL,
+    echo=False,
+    pool_pre_ping=True,
+)
 
-async def get_session() -> AsyncSession:
-    async with AsyncSessionLocal() as session:
-        yield session
+SessionLocal = sessionmaker(
+    bind=engine,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
+)
+
+def get_session():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
