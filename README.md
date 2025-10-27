@@ -22,19 +22,12 @@ yardım çağrısı göndermesini sağlar.
 
 ## 🧩 Mimarinin Genel Akışı
 
-```mermaid
-graph TD
-    A[MainActivity] --> B[PermissionHelper (Bluetooth izinleri)]
-    B --> C[BleManager]
-    C --> D[BleAdvertiser - SOS mesajı yayınlar]
-    C --> E[BleScanner - Yakındaki SOS sinyallerini algılar]
-    E --> F[LocalRepository - Verileri PostgreSQL'e kaydeder]
-    F --> G[Backend REST API (Spring Boot / PostgreSQL)]
-    style A fill:#b3e5fc,stroke:#0277bd,stroke-width:2px
-    style C fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
-    style G fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px
-
----
+MainActivity
+├── PermissionHelper → Bluetooth izin kontrolü (Android 12+)
+├── BleManager → BLE yönetimi (advertiser + scanner)
+│ ├── BleAdvertiser → SOS mesajı yayınlama
+│ └── BleScanner → Yakındaki SOS sinyallerini algılama
+└── LocalRepository → Alınan verileri PostgreSQL'e kaydetme (mock)
 ## 📱 Test Adımları
 
 1️⃣ Uygulamayı iki Android cihazda (Android 12+) çalıştır.  
@@ -104,4 +97,5 @@ Ekip arkadaşlarım bu branch üzerinden inceleme, test ve pull request review i
 Beyda Kızıldağ
 📱 Android BLE – SOS Acil Yardım Modülü
 💡 Hayat Hattı Projesi (Afet Sonrası Yardım Ağı)
+
 
