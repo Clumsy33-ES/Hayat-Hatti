@@ -11,10 +11,10 @@ Bu modül, göçük altında veya sinyalin kesildiği durumlarda cihazların Blu
 yardım çağrısı göndermesini sağlar.  
 
   Android uygulaması BLE sinyali algılar veya acil durum yayını yapar.
-	Uygulama bu veriyi JSONObject olarak hazırlar.
-	Eğer internet varsa, backend’e HTTP POST isteğiyle gönderir → MongoDB Atlas’a kaydedilir.
-	Eğer internet yoksa, veriler lokal PostgreSQL’e (offline DB) kaydedilir.
-	Bağlantı yeniden sağlandığında, lokal PostgreSQL’deki kayıtlar otomatik olarak MongoDB’ye senkronize edilir.
+-	Uygulama bu veriyi JSONObject olarak hazırlar.
+-	Eğer internet varsa, backend’e HTTP POST isteğiyle gönderir → MongoDB Atlas’a kaydedilir.
+-	Eğer internet yoksa, veriler lokal PostgreSQL’e (offline DB) kaydedilir.
+-	Bağlantı yeniden sağlandığında, lokal PostgreSQL’deki kayıtlar otomatik olarak MongoDB’ye senkronize edilir.
 
 
 ---
@@ -28,6 +28,8 @@ MainActivity
 │ ├── BleAdvertiser → SOS mesajı yayınlama
 │ └── BleScanner → Yakındaki SOS sinyallerini algılama
 └── LocalRepository → Alınan verileri PostgreSQL'e kaydetme (mock)
+
+---
 ## 📱 Test Adımları
 
 1️⃣ Uygulamayı iki Android cihazda (Android 12+) çalıştır.  
@@ -58,12 +60,12 @@ DB: Saved locally (PostgreSQL mock): SOS:37.4,38.5
 ---
 
 🧱 Katmanlar
-Sınıf	Görevi
-BleAdvertiser	SOS mesajını BLE üzerinden yayınlar.
-BleScanner	Yakındaki SOS sinyallerini tarar.
-BleManager	Advertiser & Scanner'ı birlikte yönetir.
-PermissionHelper	Android izinlerini kontrol eder.
-LocalRepository	Alınan mesajları mock veritabanına kaydeder.
+Sınıf				Görevi
+-BleAdvertiser		SOS mesajını BLE üzerinden yayınlar.
+-BleScanner			Yakındaki SOS sinyallerini tarar.
+-BleManager			Advertiser & Scanner'ı birlikte yönetir.
+-PermissionHelper	Android izinlerini kontrol eder.
+-LocalRepository	Alınan mesajları mock veritabanına kaydeder.
  
  ---
  
@@ -97,5 +99,6 @@ Ekip arkadaşlarım bu branch üzerinden inceleme, test ve pull request review i
 Beyda Kızıldağ
 📱 Android BLE – SOS Acil Yardım Modülü
 💡 Hayat Hattı Projesi (Afet Sonrası Yardım Ağı)
+
 
 
