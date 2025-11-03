@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     # Veritabanları
     DATABASE_URL: str              # PostgreSQL async URL (postgresql+asyncpg://...)
-    MONGODB_URI: str               # Mongo bağlantı URI
+    MONGODB_URI: str               # Mongo bağlantı URL
     MONGODB_DB: str                # MongoDB database adı
 
     # CORS
