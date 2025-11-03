@@ -1,24 +1,31 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi.middleware import SlowAPIMiddleware
-from slowapi.errors import RateLimitExceeded
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
-
 from app.core.config import settings
 from app.core.limits import get_limiter
-from app.routes import health, auth, signals, ble
-from app.db.mongo import init_indexes  # mongo yoksa silebilirsin
+from app.db.mongo import init_indexes
 from app.services.ble_sync import sync_ble_data
+from app.routes import auth, signals, ble, health
+import logging
 
-# ------------------------------------------------------
-# FastAPI uygulaması
-# ------------------------------------------------------
-app = FastAPI(title="Afet Backend", version="1.0.0")
+# ---------------- Logging ----------------
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# ------------------------------------------------------
-# CORS ayarları
-# ------------------------------------------------------
+# ---------------- FastAPI ----------------
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    openapi_url=f"{settings.API_PREFIX}/openapi.json",
+)
+
+# ---------------- Router ----------------
+router = APIRouter()
+
+# ---------------- CORS ----------------
 origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
@@ -28,9 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ------------------------------------------------------
-# Rate limiter
-# ------------------------------------------------------
+# ---------------- Rate limit ----------------
 app.state.limiter = get_limiter()
 app.add_middleware(SlowAPIMiddleware)
 
@@ -38,47 +43,57 @@ app.add_middleware(SlowAPIMiddleware)
 def ratelimit_handler(request, exc):
     return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
 
-# ------------------------------------------------------
-# Startup event
-# ------------------------------------------------------
+# ---------------- Lifecycle ----------------
 @app.on_event("startup")
 async def startup_event():
-    # MongoDB indeksleri oluştur
     try:
         await init_indexes()
-        print("[MONGO] Index oluşturuldu.")
+        logger.info("[MONGO] Index hazır.")
     except Exception as e:
-        print(f"[MONGO] Index oluşturulamadı veya bağlantı yok: {e}")
+        logger.warning("[MONGO] Index atlandı/bağlantı yok: %s", e)
 
-    # BLE Sync Scheduler başlat
-    try:
-        scheduler = BackgroundScheduler()
-        scheduler.add_job(sync_ble_data, "interval", seconds=60)
-        scheduler.start()
-        print("[SYNC] BLE senkronizasyon scheduler başlatıldı.")
-    except Exception as e:
-        print(f"[SYNC] Scheduler başlatılamadı: {e}")
+    if getattr(app.state, "scheduler", None) is None:
+        try:
+            sched = BackgroundScheduler()
+            if settings.ENABLE_BLE_SYNC:
+                sched.add_job(
+                    sync_ble_data,
+                    "interval",
+                    seconds=60,
+                    id="ble_sync",
+                    max_instances=1,
+                    coalesce=True,
+                )
+                logger.info("[SYNC] BLE senk başlatıldı.")
+            else:
+                logger.warning("BLE sync devre dışı (ENABLE_BLE_SYNC=false).")
 
-# ------------------------------------------------------
-# Router'lar
-# ------------------------------------------------------
+            sched.start()
+            app.state.scheduler = sched
+        except Exception as e:
+            logger.exception("[SYNC] Scheduler başlatılamadı: %s", e)
+
+@app.on_event("shutdown")
+def shutdown_event():
+    sched = getattr(app.state, "scheduler", None)
+    if sched and sched.running:
+        sched.shutdown(wait=False)
+        logger.info("[SYNC] Scheduler durduruldu.")
+
+# ---------------- Routers ----------------
 app.include_router(health.router,  prefix=settings.API_PREFIX)
 app.include_router(auth.router,    prefix=settings.API_PREFIX)
 app.include_router(signals.router, prefix=settings.API_PREFIX)
 app.include_router(ble.router,     prefix=settings.API_PREFIX)
 
-# ------------------------------------------------------
-# Root endpoint
-# ------------------------------------------------------
+# ---------------- Root ----------------
 @app.get("/")
 def root():
     return {
-        "message": "Afet Backend çalışıyor ",
+        "message": "Afet Backend çalışıyor",
         "prefix": settings.API_PREFIX,
         "docs_url": "/docs",
-        "status": "ok"
+        "status": "ok",
     }
-print("[DB] RAW DSN repr:", repr(settings.DATABASE_URL))
-non_ascii = [ (i, ch, hex(ord(ch))) for i, ch in enumerate(settings.DATABASE_URL) if ord(ch) > 127 ]
-print("[DB] non-ascii:", non_ascii)
+
 
