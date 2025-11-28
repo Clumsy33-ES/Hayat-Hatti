@@ -15,4 +15,4 @@ passlib[bcrypt]
 pyjwt
 slowapi
 apscheduler==3.10.4
-psycopg[binary,pool]==3.2.1
+psycopg[binary,pool]
