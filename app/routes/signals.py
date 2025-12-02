@@ -1,171 +1,102 @@
-from fastapi import APIRouter, Depends, Query, BackgroundTasks, HTTPException
-from typing import List, Optional
-from datetime import datetime
-from sqlalchemy.orm import Session
-from sqlalchemy import select, and_, desc
+from fastapi import APIRouter, Depends, Query, Body, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.db.postgres import get_async_session
+from app.models import Signal
+from datetime import datetime, timezone
 
-from app.core.deps import get_current_user
-from app.db.postgres import get_session
-from app.db.models import Signal
-from app.models.signal import SignalIn, SignalOut
-from app.db import mongo as mdb
-
-router = APIRouter(prefix="/signals", tags=["signals"])
-
-
-def archive_to_mongo(sig: SignalIn, user_id: int):
-    doc = {
-        "device_signal_id": sig.device_signal_id,
-        "type": sig.type,
-        "timestamp": sig.timestamp,
-        "created_at": datetime.utcnow(),
-        "lon": sig.lon,
-        "lat": sig.lat,
-        "accuracy_m": sig.accuracy_m,
-        "notes": sig.notes,
-        "attachments": sig.attachments or [],
-        "user_id": user_id,
-    }
-
-    # mongo.py async motor kullanıyorsa burada background task içinde
-    # event loop'a schedule ediyoruz. Eğer bu hata verirse ileride
-    # bunu asyncio.run(...) tarzı bir adaptere çeviririz.
-    try:
-        import asyncio
-        asyncio.create_task(
-            mdb.db.signals.update_one(
-                {"device_signal_id": sig.device_signal_id},
-                {"$setOnInsert": doc},
-                upsert=True,
-            )
-        )
-    except RuntimeError:
-        # event loop yoksa sessizce geç (örneğin sync context)
-        pass
-
-
-@router.post("", response_model=SignalOut)
-def create_signal(
-    payload: SignalIn,
-    bg: BackgroundTasks,
-    user=Depends(get_current_user),
-    db: Session = Depends(get_session),
-):
-    existing = db.execute(
-        select(Signal).where(Signal.device_signal_id == payload.device_signal_id)
-    ).scalar_one_or_none()
-
-    if not existing:
-        s = Signal(
-            device_signal_id=payload.device_signal_id,
-            type=payload.type,
-            timestamp=payload.timestamp,
-            lon=payload.lon,
-            lat=payload.lat,
-            accuracy_m=payload.accuracy_m,
-            notes=payload.notes,
-            attachments=",".join(payload.attachments) if payload.attachments else None,
-            user_id=int(user["sub"]),
-        )
-        db.add(s)
-        db.commit()
-        db.refresh(s)
-
-        bg.add_task(archive_to_mongo, payload, int(user["sub"]))
-        return {"id": s.id, "status": "ok"}
-
-    # zaten varsa yeni eklemiyoruz ama mongo'ya yine de yolluyoruz
-    bg.add_task(archive_to_mongo, payload, int(user["sub"]))
-    return {"id": existing.id, "status": "ok"}
-
-
-@router.post("/batch", response_model=List[SignalOut])
-def create_signals_batch(
-    items: List[SignalIn],
-    bg: BackgroundTasks,
-    user=Depends(get_current_user),
-    db: Session = Depends(get_session),
-):
-    outs: List[SignalOut] = []
-
-    for it in items:
-        exists = db.execute(
-            select(Signal).where(Signal.device_signal_id == it.device_signal_id)
-        ).scalar_one_or_none()
-
-        if not exists:
-            s = Signal(
-                device_signal_id=it.device_signal_id,
-                type=it.type,
-                timestamp=it.timestamp,
-                lon=it.lon,
-                lat=it.lat,
-                accuracy_m=it.accuracy_m,
-                notes=it.notes,
-                attachments=",".join(it.attachments) if it.attachments else None,
-                user_id=int(user["sub"]),
-            )
-            db.add(s)
-            db.flush()
-            outs.append({"id": s.id, "status": "ok"})
-        else:
-            outs.append({"id": exists.id, "status": "ok"})
-
-        bg.add_task(archive_to_mongo, it, int(user["sub"]))
-
-    db.commit()
-    return outs
-
+router = APIRouter(prefix="/api/signals", tags=["signals"])
 
 @router.get("")
-def query_signals(
-    bbox: Optional[str] = Query(None, description="minLon,minLat,maxLon,maxLat"),
-    since: Optional[datetime] = Query(None),
-    until: Optional[datetime] = Query(None),
-    type: Optional[str] = None,
-    limit: int = 200,
-    user=Depends(get_current_user),
-    db: Session = Depends(get_session),
+async def list_signals(
+    db: AsyncSession = Depends(get_async_session),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    type: str | None = Query(None),
 ):
-    conds = []
+    stmt = select(Signal)
     if type:
-        conds.append(Signal.type == type)
-    if since:
-        conds.append(Signal.timestamp >= since)
-    if until:
-        conds.append(Signal.timestamp <= until)
-    if bbox:
-        try:
-            minLon, minLat, maxLon, maxLat = [float(x) for x in bbox.split(",")]
-            conds += [
-                Signal.lon >= minLon,
-                Signal.lon <= maxLon,
-                Signal.lat >= minLat,
-                Signal.lat <= maxLat,
-            ]
-        except Exception:
-            raise HTTPException(status_code=400, detail="Invalid bbox format")
+        stmt = stmt.where(Signal.type == type)
+    stmt = stmt.order_by(Signal.created_at.desc()).limit(limit).offset(offset)
 
-    stmt = (
-        select(Signal).where(and_(*conds))
-        if conds
-        else select(Signal)
-    ).order_by(desc(Signal.timestamp)).limit(limit)
-
-    rows = db.execute(stmt).scalars().all()
-
-    items = [
+    res = await db.execute(stmt)
+    rows = res.scalars().all()
+    return [
         {
             "id": r.id,
             "device_signal_id": r.device_signal_id,
+            "user_id": r.user_id,
             "type": r.type,
-            "timestamp": r.timestamp.isoformat(),
-            "lon": r.lon,
-            "lat": r.lat,
-            "accuracy_m": r.accuracy_m,
             "notes": r.notes,
+            "attachments": r.attachments,
+            "location": {"lat": r.lat, "lon": r.lon, "accuracy_m": r.accuracy_m},
+            "timestamp": r.timestamp.isoformat() if r.timestamp else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "source": "pg",
         }
         for r in rows
     ]
 
-    return {"count": len(items), "items": items}
+@router.post("", status_code=201)
+async def create_signal(
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(get_async_session),
+):
+    # Quick validation
+    for f in ["device_signal_id", "user_id", "type", "timestamp", "lon", "lat"]:
+        if f not in payload:
+            raise HTTPException(400, detail={"error": "VALIDATION_ERROR", "field": f, "message": "required"})
+
+    # Idempotent check
+    existing = await db.execute(select(Signal).where(Signal.device_signal_id == payload["device_signal_id"]))
+    s = existing.scalar_one_or_none()
+    if s:
+        return {
+            "id": s.id,
+            "device_signal_id": s.device_signal_id,
+            "user_id": s.user_id,
+            "type": s.type,
+            "notes": s.notes,
+            "attachments": s.attachments,
+            "location": {"lat": s.lat, "lon": s.lon, "accuracy_m": s.accuracy_m},
+            "timestamp": s.timestamp.isoformat() if s.timestamp else None,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "source": "pg",
+        }
+
+    # Insert
+    try:
+        ts = payload["timestamp"]
+        if isinstance(ts, str):
+            ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except Exception:
+        raise HTTPException(400, detail={"error": "VALIDATION_ERROR", "field": "timestamp", "message": "invalid ISO datetime"})
+
+    s = Signal(
+        device_signal_id=payload["device_signal_id"],
+        user_id=int(payload["user_id"]),
+        type=str(payload["type"]),
+        notes=payload.get("notes"),
+        attachments=payload.get("attachments"),
+        lon=float(payload["lon"]),
+        lat=float(payload["lat"]),
+        accuracy_m=payload.get("accuracy_m"),
+        timestamp=ts,
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(s)
+    await db.commit()
+    await db.refresh(s)
+
+    return {
+        "id": s.id,
+        "device_signal_id": s.device_signal_id,
+        "user_id": s.user_id,
+        "type": s.type,
+        "notes": s.notes,
+        "attachments": s.attachments,
+        "location": {"lat": s.lat, "lon": s.lon, "accuracy_m": s.accuracy_m},
+        "timestamp": s.timestamp.isoformat() if s.timestamp else None,
+        "created_at": s.created_at.isoformat() if s.created_at else None,
+        "source": "pg",
+    }

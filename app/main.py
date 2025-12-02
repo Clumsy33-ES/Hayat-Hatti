@@ -1,99 +1,57 @@
-from fastapi import FastAPI, APIRouter, Depends
+# app/main.py
+import os
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-from apscheduler.schedulers.background import BackgroundScheduler
-from app.core.config import settings
-from app.core.limits import get_limiter
+
+# Async başlangıç işleri (Mongo index vb.)
 from app.db.mongo import init_indexes
-from app.services.ble_sync import sync_ble_data
-from app.routes import auth, signals, ble, health
-import logging
 
-# ---------------- Logging ----------------
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Routerlar
+from app.routes.health import router as health_router           # /api/health
+from app.routes.signals import router as signals_pg_router          # /api/signals
+from app.routes.signals_mongo import router as signals_mongo_router    # /api/signals/mongo
+from app.routes.disasters import router as disasters_router            # /api/disasters
+from app.routes.users import router as users_router                    # /api/users
 
-# ---------------- FastAPI ----------------
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    openapi_url=f"{settings.API_PREFIX}/openapi.json",
-)
 
-# ---------------- Router ----------------
-router = APIRouter()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Uygulama başlarken Mongo indexlerini hazırla (opsiyonel)
+    try:
+        await init_indexes()
+        print("[MONGO] Index hazır.")
+    except Exception as e:
+        print(f"[MONGO] Index atlandı/bağlantı yok: {e}")
+    yield
+    # Kapanışta özel bir şey yok
 
-# ---------------- CORS ----------------
-origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+
+app = FastAPI(title="Elif API", lifespan=lifespan)
+
+# --- CORS ---
+origins_env = os.getenv("CORS_ORIGINS", "")
+origins = [o.strip() for o in origins_env.split(",") if o.strip()] or ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins or ["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ---------------- Rate limit ----------------
-app.state.limiter = get_limiter()
-app.add_middleware(SlowAPIMiddleware)
+# --- Routers ---
+app.include_router(health_router)            # GET /api/health
+app.include_router(signals_pg_router)        # GET /api/signals
+app.include_router(signals_mongo_router)     # GET /api/signals/mongo
+app.include_router(disasters_router)         # GET /api/disasters
+app.include_router(users_router)             # GET /api/users
 
-@app.exception_handler(RateLimitExceeded)
-def ratelimit_handler(request, exc):
-    return JSONResponse({"detail": "Rate limit exceeded"}, status_code=429)
-
-# ---------------- Lifecycle ----------------
-@app.on_event("startup")
-async def startup_event():
-    try:
-        await init_indexes()
-        logger.info("[MONGO] Index hazır.")
-    except Exception as e:
-        logger.warning("[MONGO] Index atlandı/bağlantı yok: %s", e)
-
-    if getattr(app.state, "scheduler", None) is None:
-        try:
-            sched = BackgroundScheduler()
-            if settings.ENABLE_BLE_SYNC:
-                sched.add_job(
-                    sync_ble_data,
-                    "interval",
-                    seconds=60,
-                    id="ble_sync",
-                    max_instances=1,
-                    coalesce=True,
-                )
-                logger.info("[SYNC] BLE senk başlatıldı.")
-            else:
-                logger.warning("BLE sync devre dışı (ENABLE_BLE_SYNC=false).")
-
-            sched.start()
-            app.state.scheduler = sched
-        except Exception as e:
-            logger.exception("[SYNC] Scheduler başlatılamadı: %s", e)
-
-@app.on_event("shutdown")
-def shutdown_event():
-    sched = getattr(app.state, "scheduler", None)
-    if sched and sched.running:
-        sched.shutdown(wait=False)
-        logger.info("[SYNC] Scheduler durduruldu.")
-
-# ---------------- Routers ----------------
-app.include_router(health.router,  prefix=settings.API_PREFIX)
-app.include_router(auth.router,    prefix=settings.API_PREFIX)
-app.include_router(signals.router, prefix=settings.API_PREFIX)
-app.include_router(ble.router,     prefix=settings.API_PREFIX)
-
-# ---------------- Root ----------------
+# --- Root (bilgi amaçlı) ---
 @app.get("/")
 def root():
     return {
         "message": "Afet Backend çalışıyor",
-        "prefix": settings.API_PREFIX,
         "docs_url": "/docs",
         "status": "ok",
     }
-
-

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text
-from app.db.models import Base
+from app.db.postgres import Base  # <-- BURASI DÜZELDİ (eskiden app.db.models idi)
 
 # ---- Pydantic modeller ----
 class BleDataIn(BaseModel):
@@ -18,7 +18,6 @@ class BleDataOut(BaseModel):
     class Config:
         from_attributes = True
 
-
 # ---- SQLAlchemy modeli ----
 class BleSignal(Base):
     __tablename__ = "ble_signals"
@@ -29,5 +28,5 @@ class BleSignal(Base):
     longitude = Column(Float, nullable=False)
     emergency = Column(Boolean, default=False)
     note = Column(Text, nullable=True)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime(timezone=True), default=datetime.utcnow)
     synced = Column(Boolean, default=False)

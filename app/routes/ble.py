@@ -1,22 +1,25 @@
+# app/ble.py
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, status
-from sqlalchemy.orm import Session
-from app.core.deps import get_current_user
-from app.db.postgres import get_session
-from app.models.ble import BleDataIn, BleDataOut
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.postgres import get_async_session
 from app.services.ble_service import BleService
 
-router = APIRouter(prefix="/ble-data", tags=["ble"])
+# İsteğe bağlı: Pydantic şemaların varsa importla
+# from app.models.ble import BleDataIn, BleDataOut
+# Şema yoksa payload'ı dict kabul eden basit bir versiyon da yazabiliriz.
 
-@router.post("", response_model=BleDataOut, status_code=status.HTTP_201_CREATED)
-def receive_ble_data(
-    payload: BleDataIn,
+router = APIRouter(prefix="/api/ble-data", tags=["ble"])
+
+@router.post("", status_code=status.HTTP_201_CREATED)
+async def receive_ble_data(
+    payload: dict,                  # Şeman yoksa geçici olarak dict
     bg: BackgroundTasks,
-    user=Depends(get_current_user),
-    db: Session = Depends(get_session),
+    db: AsyncSession = Depends(get_async_session),
 ):
     service = BleService(db)
     try:
-        result = service.save_data(payload, bg, user)
+        result = await service.save_data(payload, bg, user=None)  # BleService async
         return result
     except Exception as e:
         print(f"[BLE] API hata: {e}")

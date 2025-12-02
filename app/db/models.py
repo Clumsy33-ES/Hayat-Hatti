@@ -4,50 +4,36 @@ from typing import Optional
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import String, DateTime, ForeignKey, Float, Text
 from sqlalchemy.sql import func
-
-
-class Base(DeclarativeBase):
-    pass
-
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Integer, Double, Text, TIMESTAMP, func
+from app.db.postgres import Base
 
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = "users"  # mevcut tablo adı
 
-    # Kimlik
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-
-    # Kullanıcı bilgileri
+    id: Mapped[int] = mapped_column(primary_key=True)
     first_name: Mapped[str] = mapped_column(String(50))
     last_name: Mapped[str] = mapped_column(String(50))
-
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    password: Mapped[str] = mapped_column(String(255))  # HASHLENMİŞ şifre saklanacak
-
-    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-
-    # Kullanıcı ne zaman oluşturuldu
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),   # DB seviyesinde now()
-        index=True
-    )
-
+    email: Mapped[str] = mapped_column(String(100))
+    password: Mapped[str] = mapped_column(String(200))
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    created_at: Mapped[str] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
 class Signal(Base):
-    __tablename__ = "signals"
+    __tablename__ = "signals"  # mevcut tablo adı
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    device_signal_id: Mapped[str] = mapped_column(String, unique=True)
+    user_id: Mapped[int] = mapped_column(Integer)  # FK var ama ilişki kurmak zorunda değiliz
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attachments: Mapped[str | None] = mapped_column(Text, nullable=True)
+    lon: Mapped[float] = mapped_column(Double)
+    lat: Mapped[float] = mapped_column(Double)
+    accuracy_m: Mapped[float | None] = mapped_column(Double, nullable=True)
+    type: Mapped[str] = mapped_column(String(32))  # "deprem" | "sel" | "yangin"
+    timestamp: Mapped[str] = mapped_column(TIMESTAMP(timezone=True))
+    created_at: Mapped[str] = mapped_column(TIMESTAMP(timezone=True))
 
-    device_signal_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
-    type: Mapped[str] = mapped_column(String(32), index=True)
-
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        index=True,
-    )
 
     lon: Mapped[float] = mapped_column(Float)
     lat: Mapped[float] = mapped_column(Float)
