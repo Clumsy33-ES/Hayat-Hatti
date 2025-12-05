@@ -3,6 +3,8 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.routes.auth import router as auth_router
+
 
 # Async başlangıç işleri (Mongo index vb.)
 from app.db.mongo import init_indexes
@@ -46,6 +48,7 @@ app.include_router(signals_pg_router)        # GET /api/signals
 app.include_router(signals_mongo_router)     # GET /api/signals/mongo
 app.include_router(disasters_router)         # GET /api/disasters
 app.include_router(users_router)             # GET /api/users
+app.include_router(auth_router)
 
 # --- Root (bilgi amaçlı) ---
 @app.get("/")
