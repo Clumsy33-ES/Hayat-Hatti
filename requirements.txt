@@ -16,3 +16,5 @@ pyjwt
 slowapi
 apscheduler==3.10.4
 psycopg[binary,pool]
+email-validator
+
