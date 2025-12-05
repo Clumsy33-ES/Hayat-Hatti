@@ -17,11 +17,12 @@ def verify_password(pw: str, hashed: str) -> bool:
 def create_access_token(payload: dict, expires_minutes: int | None = None) -> str:
     """
     Kullanıcıya JWT üretir.
-    payload -> içine 'sub', 'email' gibi alanlar koyuyoruz
+    payload -> içine 'sub', 'email' gibi alanlar koyuyoruz.
     """
-    expire_at = datetime.utcnow() + timedelta(
-        minutes=expires_minutes or settings.JWT_EXPIRES_MIN
-    )
+    # Süre: parametre geldiyse onu kullan, gelmediyse config'teki default'u kullan
+    minutes = expires_minutes or settings.ACCESS_TOKEN_EXPIRE_MINUTES
+
+    expire_at = datetime.utcnow() + timedelta(minutes=minutes)
 
     to_encode = {
         **payload,
@@ -30,8 +31,8 @@ def create_access_token(payload: dict, expires_minutes: int | None = None) -> st
 
     token = jwt.encode(
         to_encode,
-        settings.JWT_SECRET,
-        algorithm=settings.JWT_ALGORITHM,
+        settings.JWT_SECRET_KEY,   # config'teki unified secret
+        algorithm=settings.jwt_algorithm,  # küçük harf attribute
     )
 
     return token
@@ -45,8 +46,8 @@ def decode_token(token: str) -> dict | None:
     try:
         data = jwt.decode(
             token,
-            settings.JWT_SECRET,
-            algorithms=[settings.JWT_ALGORITHM],
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.jwt_algorithm],
         )
         return data
     except JWTError:
