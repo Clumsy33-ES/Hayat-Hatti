@@ -1,10 +1,10 @@
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 
-MONGO_URL = os.getenv("MONGO_URL", "mongodb+srv://hayat_hatti:firdevs64@cluster0.qkwejsr.mongodb.net/?appName=Cluster0")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://hayat_hatti:firdevs64@cluster0.qkwejsr.mongodb.net/?appName=Cluster0")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "hayat_hatti")
 
-client = AsyncIOMotorClient(MONGO_URL)
+client = AsyncIOMotorClient(MONGO_URI)
 db = client[MONGO_DB_NAME]
 
 async def init_indexes():
