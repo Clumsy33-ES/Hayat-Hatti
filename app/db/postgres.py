@@ -5,7 +5,7 @@ from sqlalchemy.orm import DeclarativeBase
 
 
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:password@localhost:5432/afet")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres.osptrzeuxafjehxuvqrf:hayathatti2025@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres")
 
 engine = create_async_engine(
     DATABASE_URL,
