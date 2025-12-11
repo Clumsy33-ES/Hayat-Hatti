@@ -19,10 +19,10 @@ def hash_password(password: str) -> str:
             status_code=400,
             detail="Şifre en fazla 72 karakter/byte olabilir."
         )
-    return pwd_context.hash(password)
+    return pwd_ctx.hash(password)
 
 
-    return pwd_ctx.hash(pw)
+    
 
 
 def verify_password(pw: str, hashed: str) -> bool:
