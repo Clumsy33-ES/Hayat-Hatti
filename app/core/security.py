@@ -9,17 +9,18 @@ from app.core.config import settings
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def hash_password(pw: str) -> str:
-    """
-    Kullanıcının düz şifresini bcrypt ile hashler.
-    Bcrypt'in 72 byte limiti olduğu için önce bunu kontrol ediyoruz.
-    """
-    # Bcrypt gerçek limit: 72 BYTE
-    if len(pw.encode("utf-8")) > 72:
+
+MAX_PASSWORD_BYTES = 72
+
+def hash_password(password: str) -> str:
+    # bytes uzunluğunu kontrol et
+    if len(password.encode("utf-8")) > MAX_PASSWORD_BYTES:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Şifre en fazla 72 karakter (72 byte) olabilir.",
+            status_code=400,
+            detail="Şifre en fazla 72 karakter/byte olabilir."
         )
+    return pwd_context.hash(password)
+
 
     return pwd_ctx.hash(pw)
 
