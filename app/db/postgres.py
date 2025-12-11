@@ -5,7 +5,7 @@ from sqlalchemy.orm import DeclarativeBase
 # Environment variable yoksa fallback olarak Supabase connection string
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+psycopg://neondb_owner:hayathattiproje@ep-round-shadow-adbf4weh-pooler.c-2.us-east-1.aws.neon.tech:5432/neondb?sslmode=require")
+    "postgresql+psycopg://neondb_owner:npg_4GighsT6jDIw@ep-round-shadow-adbf4weh-pooler.c-2.us-east-1.aws.neon.tech:5432/neondb?sslmode=require")
 
 engine = create_async_engine(
     DATABASE_URL,
