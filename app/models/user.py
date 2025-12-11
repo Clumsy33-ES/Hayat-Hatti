@@ -2,12 +2,13 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, EmailStr,constr
 
+PasswordStr = constr(min_length=8, max_length=72)
 # --- Pydantic şemalar ---
 class UserIn(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: EmailStr
-    password: constr(min_length=8, max_length=64)
+    password: PasswordStr
     phone: Optional[str] = None
 
 class UserPublic(BaseModel):
