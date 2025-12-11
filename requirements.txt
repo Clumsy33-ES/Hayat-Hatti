@@ -12,6 +12,8 @@ motor
 
 # güvenlik / rate limit
 passlib[bcrypt]
+passlib
+bcrypt
 pyjwt
 slowapi
 apscheduler==3.10.4
