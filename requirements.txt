@@ -11,9 +11,8 @@ alembic
 motor
 
 # güvenlik / rate limit
-passlib[bcrypt]
-passlib
-bcrypt
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
 pyjwt
 slowapi
 apscheduler==3.10.4
