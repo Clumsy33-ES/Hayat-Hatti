@@ -7,7 +7,7 @@ class UserIn(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: EmailStr
-    password:constr(min_length=8, max_length=64)
+    password: constr(min_length=8, max_length=64)
     phone: Optional[str] = None
 
 class UserPublic(BaseModel):
