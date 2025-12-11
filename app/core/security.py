@@ -1,16 +1,33 @@
 from datetime import datetime, timedelta
+
+from fastapi import HTTPException, status
 from passlib.context import CryptContext
 from jose import jwt, JWTError
+
 from app.core.config import settings
 
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(pw: str) -> str:
+    """
+    Kullanıcının düz şifresini bcrypt ile hashler.
+    Bcrypt'in 72 byte limiti olduğu için önce bunu kontrol ediyoruz.
+    """
+    # Bcrypt gerçek limit: 72 BYTE
+    if len(pw.encode("utf-8")) > 72:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Şifre en fazla 72 karakter (72 byte) olabilir.",
+        )
+
     return pwd_ctx.hash(pw)
 
 
 def verify_password(pw: str, hashed: str) -> bool:
+    """
+    Düz şifreyi, veritabanındaki hash ile karşılaştırır.
+    """
     return pwd_ctx.verify(pw, hashed)
 
 
