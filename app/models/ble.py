@@ -2,7 +2,15 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text
 from app.db.postgres import Base  # <-- BURASI DÜZELDİ (eskiden app.db.models idi)
+from typing import Optional
 
+class BleSosCreate(BaseModel):
+    device_id: Optional[str] = None
+    message:str
+    latitude: float
+    longtitude: float
+    rss: Optional[int] = None
+    created_at: Optional[datetime] = None
 # ---- Pydantic modeller ----
 class BleDataIn(BaseModel):
     device_id: str = Field(..., example="123e4567-e89b-12d3-a456-426614174000")

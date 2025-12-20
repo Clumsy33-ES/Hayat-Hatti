@@ -16,6 +16,9 @@ from app.routes.signals_mongo import router as signals_mongo_router    # /api/si
 from app.routes.disasters import router as disasters_router            # /api/disasters
 from app.routes.users import router as users_router                    # /api/users
 
+from app.routes import ble
+
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,7 +52,7 @@ app.include_router(signals_mongo_router)     # GET /api/signals/mongo
 app.include_router(disasters_router)         # GET /api/disasters
 app.include_router(users_router)             # GET /api/users
 app.include_router(auth_router)
-
+app.include_router(ble.router)
 # --- Root (bilgi amaçlı) ---
 @app.get("/")
 def root():

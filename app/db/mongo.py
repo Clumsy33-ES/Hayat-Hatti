@@ -1,6 +1,10 @@
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 
+def get_mongo_db():
+    return db
+
+
 MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://hayat_hatti:firdevs64@cluster0.qkwejsr.mongodb.net/?appName=Cluster0")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "hayat_hatti")
 
