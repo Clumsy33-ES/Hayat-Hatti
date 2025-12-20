@@ -16,6 +16,19 @@
         android:textColor="#FFFFFF"
         android:layout_marginBottom="32dp"
         android:textStyle="bold" />
+    <EditText
+        android:id="@+id/editMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Neredesiniz? (Maksimum 4 karakter)"
+        android:textColorHint="#AAAAAA"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#FFFFFF"
+        android:padding="12dp"
+        android:layout_marginBottom="24dp"
+        android:maxLength="4"
+        android:inputType="text"
+        android:importantForAutofill="no" />
 
     <Button
         android:id="@+id/buttonSos"
@@ -31,5 +44,23 @@
         android:paddingBottom="12dp"
         android:minWidth="200dp"
         android:elevation="4dp" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Gelen Sinyaller:"
+        android:layout_marginTop="20dp"
+        android:textStyle="bold" />
 
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+
+        <TextView
+            android:id="@+id/textSignals"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="" />
+    </ScrollView>
 </LinearLayout>

@@ -1,47 +1,85 @@
 package com.example.myapplication.bluetooth
-//bir mesaj aldığında internet varsa MongoDB, yoksa postgreSQL'e (local mock database)
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.le.BluetoothLeScanner
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanResult
-import android.util.Log
-import com.example.myapplication.data.LocalRepository
 
-class BleScanner(private val repository: LocalRepository) {
+import android.Manifest
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.le.*
+import android.content.Context // Context import edildi
+import android.content.pm.PackageManager
+import android.os.ParcelUuid
+import android.util.Log
+import androidx.core.content.ContextCompat
+import com.example.myapplication.data.LocalRepository
+import com.example.myapplication.utils.Constants
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+
+class BleScanner(
+    private val context: Context, // 1. Buraya context eklendi
+    private val repository: LocalRepository,
+    private val listener: BleScanListener
+) {
 
     private val scanner: BluetoothLeScanner? = BluetoothAdapter.getDefaultAdapter()?.bluetoothLeScanner
 
-    // 🔹 Tek bir ScanCallback örneği tanımla (start/stop aynı instance)
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult?) {
-            super.onScanResult(callbackType, result)
-            val data = result?.scanRecord?.serviceData
-            data?.forEach { (_, value) ->
-                val message = String(value)
-                Log.d("BLE", "Received message: $message")
+           // super.onScanResult(callbackType, result)
 
-                // 🔹 Artık sadece log değil, repository’ye kaydet
-                repository.saveMessage(message)
+            val record = result?.scanRecord ?: return
+            val serviceParcel = ParcelUuid(Constants.SERVICE_UUID)
+            val sd = record.getServiceData(serviceParcel) ?: return
+
+            try {
+                val buffer = ByteBuffer.wrap(sd).order(ByteOrder.LITTLE_ENDIAN)
+                val lat = buffer.int / Constants.LOCATION_FACTOR
+                val lon = buffer.int / Constants.LOCATION_FACTOR
+                val msgLen = buffer.get().toInt() and 0xFF
+                val msgBytes = ByteArray(msgLen)
+                buffer.get(msgBytes)
+                val message = String(msgBytes, Charsets.UTF_8)
+
+                val resultString = "SOS: $lat, $lon | $message"
+                repository.saveMessage(resultString)
+                listener.onSignalReceived(resultString)
+
+            } catch (e: Exception) {
+                Log.e("BLE_SCAN", "Parse error: ${e.message}")
             }
         }
 
         override fun onScanFailed(errorCode: Int) {
-            Log.e("BLE", "Scan failed: $errorCode")
+            listener.onScanFailed(errorCode)
         }
     }
 
     fun startScanning() {
-        if (scanner == null) {
-            Log.e("BLE", "Scanner not supported.")
-            return
-        }
+      //  if (scanner == null) return
 
-        scanner.startScan(scanCallback)
-        Log.d("BLE", "Scanning started...")
+        // 2. Hata veren getContext() yerine yukarıdaki context kullanıldı
+        val hasPermission = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.BLUETOOTH_SCAN
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val filter = ScanFilter.Builder()
+            .setServiceUuid(ParcelUuid(Constants.SERVICE_UUID))
+            .build()
+
+        val settings = ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .build()
+
+        try {
+            scanner?.startScan(null, settings, scanCallback)
+            Log.d("BLE", "Scanning started with NULL filters (safe mode)")
+        } catch (e: SecurityException) {
+            Log.e("BLE", "Permission error: ${e.message}")
+        }
     }
 
     fun stopScanning() {
-        scanner?.stopScan(scanCallback)
-        Log.d("BLE", "Scanning stopped.")
+        try {
+            scanner?.stopScan(scanCallback)
+        } catch (e: SecurityException) { }
     }
 }
