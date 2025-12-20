@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.postgres import get_async_session
 from app.db.mongo import get_mongo_db
 from app.services.ble_service import BleService
-from app.models.ble import BleSosCreate  # sende zaten var
+from app.models.ble import BleSosCreate, BleDataIn  # sende zaten var
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -41,25 +41,21 @@ api_ble_router = APIRouter(prefix="/api/ble-data", tags=["ble"])
 
 @api_ble_router.post("", status_code=status.HTTP_201_CREATED)
 async def receive_ble_data(
-    payload: Dict[str, Any],          # Şeman yoksa geçici olarak dict
+    payload: BleDataIn,   # ✅ dict değil, zaten sende var
     bg: BackgroundTasks,
     db: AsyncSession = Depends(get_async_session),
 ):
     service = BleService(db)
     try:
-        # Not: user=None gönderdiğin için BleService içinde user bekleniyorsa patlar.
-        # O yüzden payload içinde user_id varsa user objesi gibi geçiyoruz.
+        # user istemiyorsa bile None kalabilir, ama servis user bekliyorsa patlar.
+        # O yüzden en güvenlisi: payload içinden bir user objesi türetmek:
         user_obj = None
-        if isinstance(payload, dict) and "user_id" in payload and payload["user_id"] is not None:
-            user_obj = {"id": payload["user_id"]}
+        # sende user_id yok, o yüzden şimdilik None bırakıyoruz.
+        # Eğer servis user istiyorsa, user_id eklemek gerekecek (aşağıda anlattım).
 
         result = await service.save_data(payload, bg, user=user_obj)
         return result
 
-    except HTTPException:
-        # Service zaten HTTPException atıyorsa aynen yükselt
-        raise
     except Exception:
-        # Railway loglarında stack trace görmek için:
-        logger.exception("[BLE] API hata: BLE data işlenemedi")
+        logger.exception("[BLE] API hata")
         raise HTTPException(status_code=500, detail="BLE data işlenemedi")
