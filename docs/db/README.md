@@ -18,6 +18,3 @@ ve ilişkisel veri modelini göstermek amacıyla oluşturulmuştur.
 ### signals
 - Kullanıcıya bağlı SOS/sinyal kayıtları
 - user_id → users.id foreign key ilişkisi
-
-## Şema Dosyası
-PostgreSQL tablo tanımları:
