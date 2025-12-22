@@ -46,8 +46,8 @@ BLE Cihaz / Beacon → Flutter Mobil Uygulama → FastAPI Backend → PostgreSQL
 - Modüler ve genişletilebilir yapı
 
 ### Ekip Çalışması Görev Dağılımı:
--Backend --> ELİF SAKAR
--Veri Tabanı --> FİRDEVS KÖSE
--Fontend --> NESLİHAN LOKMAN
--BLE --> BEYDA KIZILDAĞ
--Test --> ŞEVAL PÖZE
+- Backend → ELİF SAKAR
+- Veri Tabanı → FİRDEVS KÖSE
+- Fontend → NESLİHAN LOKMAN
+- BLE → BEYDA KIZILDAĞ
+- Test → ŞEVAL PÖZE
