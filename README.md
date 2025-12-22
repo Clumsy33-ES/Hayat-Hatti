@@ -45,7 +45,7 @@ BLE Cihaz / Beacon → Flutter Mobil Uygulama → FastAPI Backend → PostgreSQL
 - Swagger arayüzü ile API test edilebilirliği
 - Modüler ve genişletilebilir yapı
 
-Ekip Çalışması Görev Dağılımı:
+### Ekip Çalışması Görev Dağılımı:
 -Backend --> ELİF SAKAR
 -Veri Tabanı --> FİRDEVS KÖSE
 -Fontend --> NESLİHAN LOKMAN
