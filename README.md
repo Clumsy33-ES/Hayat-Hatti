@@ -48,6 +48,6 @@ BLE Cihaz / Beacon → Flutter Mobil Uygulama → FastAPI Backend → PostgreSQL
 ### Ekip Çalışması Görev Dağılımı:
 - Backend → ELİF SAKAR
 - Veri Tabanı → FİRDEVS KÖSE
-- Fontend → NESLİHAN LOKMAN
+- Frontend → NESLİHAN LOKMAN
 - BLE → BEYDA KIZILDAĞ
 - Test → ŞEVAL PÖZE
