@@ -4,6 +4,7 @@ pydantic-settings
 
 # PostgreSQL (async + migration)
 SQLAlchemy==2.*
+greenlet
 asyncpg
 alembic
 

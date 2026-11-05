@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+from app.core.deps import get_current_user
 from app.db.mongo import db
 
 router = APIRouter(prefix="/api/signals", tags=["signals"])
 
-@router.get("/mongo")
+@router.get("/mongo", dependencies=[Depends(get_current_user)])
 async def list_signals_mongo(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),

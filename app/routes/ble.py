@@ -4,9 +4,10 @@ from datetime import datetime
 import logging
 from typing import Any, Dict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.deps import get_current_user
 from app.db.postgres import get_async_session
 from app.db.mongo import get_mongo_db
 from app.services.ble_service import BleService
@@ -38,6 +39,30 @@ async def receive_ble_sos(data: BleSosCreate, db=Depends(get_mongo_db)):
 # 2) BLE DATA (Service -> Postgres)
 # -------------------------
 api_ble_router = APIRouter(prefix="/api/ble-data", tags=["ble"])
+
+@api_ble_router.get("", dependencies=[Depends(get_current_user)])
+async def list_ble_data(
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db=Depends(get_mongo_db),
+):
+    cursor = db.ble.find({}).sort("timestamp", -1).skip(offset).limit(limit)
+    docs = await cursor.to_list(length=limit)
+    return [
+        {
+            "id": str(d.get("_id")),
+            "device_id": d.get("device_id"),
+            "user_id": d.get("user_id"),
+            "latitude": d.get("latitude"),
+            "longitude": d.get("longitude"),
+            "emergency": d.get("emergency"),
+            "note": d.get("note"),
+            "timestamp": d.get("timestamp").isoformat() if d.get("timestamp") else None,
+            "source": "mongo",
+        }
+        for d in docs
+    ]
+
 
 @api_ble_router.post("", status_code=status.HTTP_201_CREATED)
 async def receive_ble_data(

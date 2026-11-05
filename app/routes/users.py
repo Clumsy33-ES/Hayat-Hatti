@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from app.core.deps import get_current_user
 from app.db.postgres import get_async_session
 from app.models import User
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
-@router.get("")
+@router.get("", dependencies=[Depends(get_current_user)])
 async def list_users(db: AsyncSession = Depends(get_async_session)):
     res = await db.execute(select(User).order_by(User.id.asc()))
     rows = res.scalars().all()

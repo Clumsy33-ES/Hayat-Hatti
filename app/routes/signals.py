@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, Query, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from app.core.deps import get_current_user
 from app.db.postgres import get_async_session
 from app.models import Signal
 from datetime import datetime, timezone
 
 router = APIRouter(prefix="/api/signals", tags=["signals"])
 
-@router.get("")
+@router.get("", dependencies=[Depends(get_current_user)])
 async def list_signals(
     db: AsyncSession = Depends(get_async_session),
     limit: int = Query(100, ge=1, le=500),
