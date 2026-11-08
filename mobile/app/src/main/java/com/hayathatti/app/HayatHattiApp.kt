@@ -2,8 +2,8 @@ package com.hayathatti.app
 
 import android.app.Application
 import android.content.Context
+import com.hayathatti.app.ble.AndroidBleGateway
 import com.hayathatti.app.ble.BleGateway
-import com.hayathatti.app.ble.NotConnectedBle
 import com.hayathatti.app.data.ApiFactory
 import com.hayathatti.app.data.AppDatabase
 import com.hayathatti.app.data.AuthRepository
@@ -27,7 +27,7 @@ class AppContainer(context: Context) {
     val prefs = Prefs(context).also { runBlocking { it.load() } }
     val api = ApiFactory.create({ prefs.baseUrl.value }, { prefs.session.value?.token })
     val db = AppDatabase.create(context)
-    val ble: BleGateway = NotConnectedBle
+    val ble: BleGateway = AndroidBleGateway(context)
     val auth = AuthRepository(api, prefs)
     val signals = SignalRepository(api, prefs)
     val outbox = OutboxRepository(context, db.outbox())
