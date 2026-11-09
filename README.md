@@ -61,10 +61,6 @@ Proje; **Bluetooth Low Energy (BLE)**, **Kotlin mobil uygulaması** ve **Firebas
 
 ## 📱 Mobil Uygulama (Kotlin Frontend)
 
-> Kotlin mobil uygulamasının arayüzü ve mevcut API bağlantısı **Neslihan LOKMAN** tarafından geliştirilmiştir.
-
-Uygulama `mobile/` klasöründe bulunmaktadır.
-
 ### Ekranlar
 
 | Giriş | İzinler | Konum İzni |
