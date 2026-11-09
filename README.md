@@ -1,80 +1,85 @@
-# 🚨 Hayat Hattı – Acil Durum Destek Sistemi
+# 🔥 Hayat Hattı – Firebase Veritabanı
 
-**Hayat Hattı**, afet ve acil durum senaryolarında bireylerin konum ve yardım taleplerini hızlı şekilde iletebilmesini amaçlayan **mobil + backend** tabanlı bir destek sistemidir.  
-Proje; **Bluetooth Low Energy (BLE)**, mobil uygulama ve **REST API** mimarisini birlikte kullanır.
+## 📌 Genel Bakış
 
-## 🎯 Amaç
+Hayat Hattı projesinin veritabanı altyapısı **Firebase Cloud Firestore** kullanılarak hazırlanmıştır.
 
-- Afet anında **internet olmasa bile** BLE üzerinden sinyal toplanması
-- Mobil uygulama aracılığıyla verilerin **backend’e iletilmesi**
-- Konum, mesaj ve zaman bilgisiyle **acil yardım taleplerinin kayıt altına alınması**
-- Yetkililer için **takip edilebilir bir altyapı** oluşturulması
+Firebase'in ücretsiz **Spark planı** tercih edilmiş, kullanıcı bilgileri ve acil durum sinyallerinin saklanması için iki temel koleksiyon oluşturulmuştur.
 
-## 🧱 Genel Mimari
+## 🗂️ Firestore Koleksiyonları
 
-BLE Cihaz / Beacon → Kotlin Mobil Uygulama → FastAPI Backend → PostgreSQL / MongoDB
+### 1. users – Kullanıcı Bilgileri
 
-> Not: Backend, BLE ile doğrudan konuşmaz. Akış: **BLE → Mobil → Backend**
+Kullanıcıların profil bilgilerini saklamak amacıyla oluşturulmuştur.
 
+| Alan | Veri Türü | Açıklama |
+|---|---|---|
+| `firstName` | string | Kullanıcının adı |
+| `lastName` | string | Kullanıcının soyadı |
+| `email` | string | E-posta adresi |
+| `phone` | string | Telefon numarası |
+| `createdAt` | timestamp | Hesap oluşturulma tarihi |
 
-## 🛠️ Teknolojiler
+> **Not:** Kullanıcı şifreleri Firestore'da saklanmaz. Gerçek kullanıcı belgelerinin kimliği, Firebase Authentication tarafından oluşturulan UID ile eşleşecek şekilde tasarlanmıştır.
 
-### Backend
-- Python (FastAPI)
-- Pydantic
-- SQLAlchemy
-- PostgreSQL (Neon / Railway)
-- MongoDB (opsiyonel)
-- Railway (deploy)
+### 2. signals – Acil Durum Sinyalleri
 
-### Mobil
-- Kotlin, Jetpack Compose, Material 3
-- Retrofit + kotlinx.serialization (REST API entegrasyonu)
-- Room (çevrimdışı gönderim kuyruğu), WorkManager (otomatik yeniden gönderim)
-- DataStore + Android Keystore (oturum bilgisinin şifreli saklanması)
-- BLE (Bluetooth Low Energy)
+Normal SOS ve Bluetooth Low Energy (BLE) üzerinden alınan yardım sinyallerini ortak bir koleksiyonda saklamak amacıyla oluşturulmuştur.
 
-### Diğer
-- Swagger / OpenAPI
-- Git & GitHub
+| Alan | Veri Türü | Açıklama |
+|---|---|---|
+| `signalId` | string | Sinyalin benzersiz kimliği |
+| `userId` | string / null | SOS'u oluşturan kullanıcının kimliği |
+| `latitude` | double | Konumun enlem bilgisi |
+| `longitude` | double | Konumun boylam bilgisi |
+| `message` | string | Yardım mesajı |
+| `disasterType` | string / null | Afet türü |
+| `source` | string | Sinyalin kaynağı (`app` / `ble`) |
+| `status` | string | Sinyalin durumu |
+| `createdAt` | timestamp / null | SOS oluşturulma zamanı |
+| `receivedAt` | timestamp / null | BLE sinyalinin alınma zamanı |
+| `originSignalId` | string | İlk SOS kaydının kimliği |
+| `uploadedBy` | string | Kaydı Firebase'e yükleyen oturumun kimliği |
+| `uploadedAt` | timestamp | Buluta kaydedilme zamanı |
 
-## ✅ Temel Özellikler
+> **Not:** Bazı alanlar sinyalin kaynağına göre isteğe bağlıdır.
 
-- BLE üzerinden acil sinyal algılama
-- Konum bilgisi gönderimi (latitude / longitude)
-- Acil mesaj ve durum kaydı
-- Zaman damgalı kayıt (timestamp)
-- Swagger arayüzü ile API test edilebilirliği
-- Modüler ve genişletilebilir yapı
+## 🚨 Afet Türleri ve Test Kayıtları
 
-## 📱 Mobil Uygulama (Kotlin Frontend)
+Cloud Firestore üzerinde farklı afet türlerini temsil eden örnek SOS kayıtları oluşturulmuştur.
 
-> Kotlin mobil uygulamasının arayüzü ve backend bağlantısı **Neslihan LOKMAN** tarafından geliştirilmiştir.
+| Kayıt ID | Afet Türü | Kaynak |
+|---|---|---|
+| `test_signal_001` | Deprem (`earthquake`) | `app` |
+| `test_signal_002` | Sel (`flood`) | `app` |
+| `test_signal_003` | Yangın (`fire`) | `app` |
+| `test_ble_001` | Belirtilmemiş (`null`) | `ble` |
 
-Uygulama `mobile/` klasöründedir.
-### Ekranlar
+Ayrıca `users` koleksiyonunda `test_user_001` kimliğiyle örnek bir kullanıcı kaydı oluşturulmuştur.
 
-| Giriş | İzinler | Konum izni |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/01-giris.png" width="220" alt="Giriş ekranı"> | <img src="docs/screenshots/02-izinler.png" width="220" alt="İzinler ekranı"> | <img src="docs/screenshots/03-konum-izni.png" width="220" alt="Konum izni penceresi"> |
+**Bu kayıtların tamamı test amaçlıdır ve gerçek yardım taleplerini temsil etmemektedir.**
 
-| SOS | SOS açık | Profil |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/04-sos.png" width="220" alt="SOS ekranı"> | <img src="docs/screenshots/05-sos-aktif.png" width="220" alt="SOS açıkken"> | <img src="docs/screenshots/06-profil.png" width="220" alt="Profil ekranı"> |
+## 🔎 Sorgu ve İndeks Kontrolleri
 
-## 📱 Mobil Uygulama
+Firestore üzerinde `source` alanına göre filtreleme gerçekleştirilmiştir.
 
-Kotlin (Jetpack Compose) ile yazılmış Android uygulaması `mobile/` klasöründedir.
+BLE kayıtlarını listelemek için kullanılan örnek sorgu:
 
-- Giriş ve kayıt
-- Hesapsız SOS gönderimi
-- İnternet yokken SOS'u bekletip bağlantı gelince otomatik gönderme
-- Sinyal listesi ve afet özeti
-- Sunucu adresini uygulama içinden ayarlama
-  
-### Ekip Çalışması Görev Dağılımı:
-- Backend → ELİF SAKAR
-- Veri Tabanı → FİRDEVS KÖSE
-- Frontend (Kotlin mobil uygulama) → NESLİHAN LOKMAN
-- BLE → BEYDA KIZILDAĞ
-- Test → ŞEVAL PÖZE
+```javascript
+db.collection("signals")
+  .where("source", "==", "ble")
+```
+
+Bu sorgu sonucunda yalnızca `test_ble_001` kaydının görüntülendiği doğrulanmıştır.
+
+### Otomatik İndeksler
+
+Firestore'un otomatik indeks ayarları kontrol edilmiştir.
+
+| İndeks Türü | Durum |
+|---|---|
+| Ascending | ✅ Enabled |
+| Descending | ✅ Enabled |
+| Arrays | ✅ Enabled |
+
+Bu aşamada manuel birleşik indeks oluşturulmamıştır.
