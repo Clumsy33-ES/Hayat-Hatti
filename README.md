@@ -62,15 +62,6 @@ Uygulama `mobile/` klasöründedir.
 |:---:|:---:|:---:|
 | <img src="docs/screenshots/04-sos.png" width="220" alt="SOS ekranı"> | <img src="docs/screenshots/05-sos-aktif.png" width="220" alt="SOS açıkken"> | <img src="docs/screenshots/06-profil.png" width="220" alt="Profil ekranı"> |
 
-## 📱 Mobil Uygulama
-
-Kotlin (Jetpack Compose) ile yazılmış Android uygulaması `mobile/` klasöründedir.
-
-- Giriş ve kayıt
-- Hesapsız SOS gönderimi
-- İnternet yokken SOS'u bekletip bağlantı gelince otomatik gönderme
-- Sinyal listesi ve afet özeti
-- Sunucu adresini uygulama içinden ayarlama
   
 ### Ekip Çalışması Görev Dağılımı:
 - Backend → ELİF SAKAR
