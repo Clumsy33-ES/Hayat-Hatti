@@ -1,189 +1,85 @@
-🔥 Hayat Hattı – Firebase Veritabanı
+# 🔥 Hayat Hattı – Firebase Veritabanı
 
-📌 Genel Bakış
+## 📌 Genel Bakış
 
-Hayat Hattı projesinin veritabanı altyapısı, Firebase Cloud Firestore kullanılarak hazırlanmıştır.
+Hayat Hattı projesinin veritabanı altyapısı **Firebase Cloud Firestore** kullanılarak hazırlanmıştır.
 
-Firebase'in ücretsiz Spark planı tercih edilmiş, kullanıcı bilgileri ve acil durum sinyalleri için iki temel koleksiyon oluşturulmuştur.
+Firebase'in ücretsiz **Spark planı** tercih edilmiş, kullanıcı bilgileri ve acil durum sinyallerinin saklanması için iki temel koleksiyon oluşturulmuştur.
 
-🗂️ Firestore Koleksiyonları
+## 🗂️ Firestore Koleksiyonları
 
-1. users – Kullanıcı Bilgileri
+### 1. users – Kullanıcı Bilgileri
 
-Kullanıcıların profil bilgilerini saklamak için oluşturulmuştur.
+Kullanıcıların profil bilgilerini saklamak amacıyla oluşturulmuştur.
 
-Alan
+| Alan | Veri Türü | Açıklama |
+|---|---|---|
+| `firstName` | string | Kullanıcının adı |
+| `lastName` | string | Kullanıcının soyadı |
+| `email` | string | E-posta adresi |
+| `phone` | string | Telefon numarası |
+| `createdAt` | timestamp | Hesap oluşturulma tarihi |
 
-Veri Türü
+> **Not:** Kullanıcı şifreleri Firestore'da saklanmaz. Gerçek kullanıcı belgelerinin kimliği, Firebase Authentication tarafından oluşturulan UID ile eşleşecek şekilde tasarlanmıştır.
 
-Açıklama
+### 2. signals – Acil Durum Sinyalleri
 
-firstName
+Normal SOS ve Bluetooth Low Energy (BLE) üzerinden alınan yardım sinyallerini ortak bir koleksiyonda saklamak amacıyla oluşturulmuştur.
 
-string
+| Alan | Veri Türü | Açıklama |
+|---|---|---|
+| `signalId` | string | Sinyalin benzersiz kimliği |
+| `userId` | string / null | SOS'u oluşturan kullanıcının kimliği |
+| `latitude` | double | Konumun enlem bilgisi |
+| `longitude` | double | Konumun boylam bilgisi |
+| `message` | string | Yardım mesajı |
+| `disasterType` | string / null | Afet türü |
+| `source` | string | Sinyalin kaynağı (`app` / `ble`) |
+| `status` | string | Sinyalin durumu |
+| `createdAt` | timestamp / null | SOS oluşturulma zamanı |
+| `receivedAt` | timestamp / null | BLE sinyalinin alınma zamanı |
+| `originSignalId` | string | İlk SOS kaydının kimliği |
+| `uploadedBy` | string | Kaydı Firebase'e yükleyen oturumun kimliği |
+| `uploadedAt` | timestamp | Buluta kaydedilme zamanı |
 
-Kullanıcı adı
+> **Not:** Bazı alanlar sinyalin kaynağına göre isteğe bağlıdır.
 
-lastName
+## 🚨 Afet Türleri ve Test Kayıtları
 
-string
+Cloud Firestore üzerinde farklı afet türlerini temsil eden örnek SOS kayıtları oluşturulmuştur.
 
-Kullanıcı soyadı
+| Kayıt ID | Afet Türü | Kaynak |
+|---|---|---|
+| `test_signal_001` | Deprem (`earthquake`) | `app` |
+| `test_signal_002` | Sel (`flood`) | `app` |
+| `test_signal_003` | Yangın (`fire`) | `app` |
+| `test_ble_001` | Belirtilmemiş (`null`) | `ble` |
 
-email
+Ayrıca `users` koleksiyonunda `test_user_001` kimliğiyle örnek bir kullanıcı kaydı oluşturulmuştur.
 
-string
+**Bu kayıtların tamamı test amaçlıdır ve gerçek yardım taleplerini temsil etmemektedir.**
 
-E-posta adresi
+## 🔎 Sorgu ve İndeks Kontrolleri
 
-phone
+Firestore üzerinde `source` alanına göre filtreleme gerçekleştirilmiştir.
 
-string
+BLE kayıtlarını listelemek için kullanılan örnek sorgu:
 
-Telefon numarası
+```javascript
+db.collection("signals")
+  .where("source", "==", "ble")
+```
 
-createdAt
+Bu sorgu sonucunda yalnızca `test_ble_001` kaydının görüntülendiği doğrulanmıştır.
 
-timestamp
+### Otomatik İndeksler
 
-Oluşturulma tarihi
+Firestore'un otomatik indeks ayarları kontrol edilmiştir.
 
-Kullanıcı şifreleri Firestore'da saklanmaz. Kullanıcı belgelerinin kimliği Firebase Authentication UID'siyle eşleşecek şekilde tasarlanmıştır.
+| İndeks Türü | Durum |
+|---|---|
+| Ascending | ✅ Enabled |
+| Descending | ✅ Enabled |
+| Arrays | ✅ Enabled |
 
-2. signals – Acil Durum Sinyalleri
-
-Normal SOS ve BLE üzerinden alınan sinyaller aynı koleksiyonda tutulacak şekilde tasarlanmıştır.
-
-Alan
-
-Veri Türü
-
-Açıklama
-
-signalId
-
-string
-
-Sinyalin benzersiz kimliği
-
-userId
-
-string / null
-
-Kullanıcı kimliği
-
-latitude
-
-double
-
-Enlem
-
-longitude
-
-double
-
-Boylam
-
-message
-
-string
-
-Yardım mesajı
-
-disasterType
-
-string / null
-
-Afet türü
-
-source
-
-string
-
-Sinyalin kaynağı (app / ble)
-
-status
-
-string
-
-Sinyalin durumu
-
-createdAt
-
-timestamp
-
-Oluşturulma zamanı
-
-receivedAt
-
-timestamp
-
-BLE sinyalinin alınma zamanı
-
-originSignalId
-
-string
-
-İlk SOS kaydının kimliği
-
-uploadedBy
-
-string
-
-Kaydı yükleyen oturumun kimliği
-
-uploadedAt
-
-timestamp
-
-Buluta kaydedilme zamanı
-
-Bazı alanlar sinyal türüne göre isteğe bağlıdır.
-
-🚨 Afet Türleri ve Test Kayıtları
-
-Firestore üzerinde aşağıdaki test kayıtları oluşturulmuştur:
-
-Kayıt ID
-
-Afet Türü
-
-Kaynak
-
-test_signal_001
-
-Deprem (earthquake)
-
-app
-
-test_signal_002
-
-Sel (flood)
-
-app
-
-test_signal_003
-
-Yangın (fire)
-
-app
-
-test_ble_001
-
-BLE SOS
-
-ble
-
-Bu kayıtlar yalnızca test amaçlıdır.
-
-🔎 Sorgu ve İndeks Kontrolleri
-
-Firestore üzerinde source alanına göre filtreleme yapılmış ve BLE kayıtlarının ayrı görüntülenebildiği doğrulanmıştır.
-
-Otomatik tek alanlı indekslerin etkin olduğu kontrol edilmiştir:
-
-Ascending
-
-Descending
-
-Arrays
+Bu aşamada manuel birleşik indeks oluşturulmamıştır.
