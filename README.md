@@ -72,7 +72,7 @@ Uygulama `mobile/` klasöründedir. Backend'deki giriş, kayıt, sinyal ve afet 
 - **Afet özeti:** `/api/disasters` verisi gösterilir.
 - **Sunucu ayarı:** Backend adresi uygulama içinden değiştirilebilir.
 
-> BLE modülü henüz uygulamaya bağlanmadı; bu yüzden uygulamada "Bluetooth bağlı değil" yazar. Bağlantı noktası `mobile/app/src/main/java/com/hayathatti/app/ble/BleGateway.kt` dosyasıdır.
+> BLE modülü bu dalda uygulamaya bağlandı. Ayrıntılar aşağıdaki **BLE** bölümünde.
 
 ### Backend tarafındaki değişiklikler
 - `GET /api/ble-data` eklendi (BLE kayıtlarını listeler).
@@ -90,3 +90,31 @@ Uygulama `mobile/` klasöründedir. Backend'deki giriş, kayıt, sinyal ve afet 
 - Frontend (Kotlin mobil uygulama) → NESLİHAN LOKMAN
 - BLE → BEYDA KIZILDAĞ
 - Test → ŞEVAL PÖZE
+
+## 📡 BLE – `feature/ble-entegrasyon` dalı
+
+> BLE modülü **Beyda KIZILDAĞ** tarafından geliştirilmiştir. Paket formatı, gizlilik notları ve adım adım test rehberi: [`docs/BLE.md`](docs/BLE.md)
+
+Bu dal BLE modülünü Kotlin uygulamasına bağlar. Main'e henüz birleştirilmedi; Firebase geçişi tamamlandıktan sonra entegre edilecek.
+
+### Yapılanlar
+- **Paket formatı v1:** SOS, BLE reklamının üretici verisi alanında taşınıyor (en çok 27 bayt): gönderen kimliği, konum (yaklaşık 11 cm hassasiyet), bayraklar ve 12 bayta kadar mesaj. Eski formattaki 31 bayt taşması (Android "hata 1") ve Türkçe harflerin ortadan bölünmesi giderildi.
+- **Yayın ve tarama:** `AndroidBleGateway`, uygulamanın `BleGateway` arayüzünü gerçek Bluetooth ile uygular. Uygulama açıkken sürekli tarar, SOS başlatılınca konumu ve mesajı yayınlar.
+- **Kendiliğinden toparlanma:** Bluetooth kapanıp açılınca ya da izin sonradan verilince tarama ve açık SOS yayını aynı gönderen kimliğiyle geri gelir.
+- **Kuyruğa yazma:** Başka telefondan duyulan SOS'lar telefonun yerel kuyruğuna (Room) yazılır ve internet gelince mevcut senkron sistemiyle (WorkManager) gönderilir. Aynı sinyal 30 saniye içinde tekrar kaydedilmez.
+- **Gizlilik:** Pakette ad, telefon numarası ya da cihaz kimliği yok; gönderen kimliği her SOS'ta rastgele seçilir. Konum ve mesaj yalnızca debug sürümünde loga yazılır.
+- **Test:** 15 BLE birim testi (uygulamada toplam 27). Samsung Galaxy A34 (Android 16) üzerinde cihaz testi yapıldı: tarama, yayın, sinyal alma, Bluetooth kesintisi ve SOS durdurma çalışıyor.
+
+### Nerede kaldık
+- Dal GitHub'da, main'e birleştirilmedi.
+- Cihaz testi bir telefonla yapıldı; ikinci cihaz olarak bir bilgisayarın Bluetooth'u kullanıldı. İki telefonda uygulamadan uygulamaya test henüz yapılmadı.
+- **SOS kimliği uçtan uca korunmuyor.** Paketteki gönderen kimliği Room'a aktarılmıyor; Room'daki kayıt kimliği konum, mesaj ve 10 dakikalık zaman diliminden üretiliyor. Bu yüzden aynı SOS, farklı telefonlarda ya da 10 dakikadan uzun sürdüğünde birden çok kayıt oluşturabiliyor. SOS'u başlatan telefonun kendi kaydı da bu kimlikle eşleşmiyor.
+- BLE izinleri ("Yakındaki cihazlar") uygulama ekranında henüz istenmiyor; testlerde elle verildi.
+
+### Sıradaki adımlar
+1. **SOS kimliğini uçtan uca taşımak:** Kimlik SOS başlatılırken bir kez üretilecek; hem telefonun kendi kaydında hem BLE paketinde kullanılacak, `BleIncoming` üzerinden Room'a ve Firestore'a kadar taşınacak. Gönderen kimliği 4 bayt olduğu için Firestore belge kimliğinde zaman bilgisiyle birlikte kullanılacak. Firebase veri yapısıyla birlikte netleştirilecek.
+2. **Ekran kapalıyken çalışma:** Uzun süreli yayın ve dinleme için foreground service.
+3. **Konumsuz SOS:** GPS yokken de yayın; sinyali duyan telefon kendi konumunu ve sinyal gücünü ekleyecek.
+4. **Durum kodları:** "Yaralı", "enkaz altında", kişi sayısı gibi bilgiler paketteki bayraklar baytına.
+5. **Kurtarıcı modu:** Sinyal gücüyle enkazdaki kişinin yönünü bulma.
+6. **Şirket kimliği:** `0xFFFF` test kimliği yerine Bluetooth SIG'den alınacak kimlik.
