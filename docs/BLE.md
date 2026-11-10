@@ -6,6 +6,7 @@
 
 - SOS başlatılınca telefon konumunu ve kısa mesajı çevreye yayınlar. Paket 12 bayta kadar mesaj taşır; SOS ekranındaki alan şimdilik 4 karakterle sınırlı.
 - Uygulama açıkken telefon sürekli dinler. Duyduğu sinyalleri **Yakındaki sinyaller** ekranında gösterir, kuyruğa yazar ve internet gelince `/api/ble-data` (hesap varsa `/api/signals`) adresine gönderir.
+- Bluetooth kapanıp açılınca ya da izin sonradan verilince tarama ve açık SOS yayını aynı gönderen kimliğiyle kendiliğinden geri gelir.
 - Backend BLE ile doğrudan konuşmaz. Akış: **BLE → Mobil → Backend**.
 
 ## Dosyalar
@@ -19,7 +20,7 @@ Hepsi `mobile/app/src/main/java/com/hayathatti/app/ble/` altında:
 | `BlePacket.kt` | Paketin baytlara çevrilmesi ve geri okunması; tekrar eden sinyalleri süzen `SignalThrottle` |
 | `BlePermissions.kt` | Android sürümüne göre gereken izinler (`BlePermissions.required()`) |
 
-Testler: `mobile/app/src/test/java/com/hayathatti/app/ble/BlePacketTest.kt`
+Testler: `mobile/app/src/test/java/com/hayathatti/app/ble/BlePacketTest.kt` (15 BLE testi). Çalıştırmak için `mobile/` klasöründe: `gradlew :app:testDebugUnitTest`
 
 ## Paket formatı (sürüm 1)
 
@@ -156,12 +157,21 @@ Samsung Galaxy A34 (Android 16), debug sürümü. İkinci cihaz olarak bir Windo
 
 Denenmedi: iki telefonda uygulamadan uygulamaya, ekran uzun süre kapalıyken çalışma, Android 8–11 cihazlar, sunucuya aktarım.
 
-## Bilinen eksikler ve sonraki adımlar
+## Nerede kaldık (10 Kasım 2026)
 
-- **Şirket kimliği:** `0xFFFF` yerine Bluetooth SIG'den alınacak kimliğe geçilecek (bkz. Gizlilik ve güvenlik).
-- **Arka planda çalışma:** Şu an uygulama açıkken (ve kısa süre arka plandayken) çalışır. Ekran uzun süre kapalıyken de yayın ve dinleme için bir *foreground service* (bildirimde "SOS yayında") eklenecek.
-- **Konumsuz SOS:** Konum alınamazsa SOS hiç başlamıyor. Enkaz altında sık görülebilecek bu durumda da yayın yapılmalı; sinyali duyan telefon kendi konumunu ve sinyal gücünü ekleyebilir.
-- **Gönderen kimliğinin iletilmesi:** `BleIncoming`'e gönderen kimliği eklenecek. Böylece aynı SOS'u duyan farklı telefonların kayıtları tek SOS olarak eşleştirilebilecek.
-- **Afet türü:** Paket içinde yer ayrıldı (bayraklar baytı). `BleGateway.startSos` türü almadığı için şimdilik `0` gönderiliyor.
-- **Mesh (röle):** Duyulan sinyalin başka telefonlarca yeniden yayınlanması. Bayraklar baytı röle sayacı için kullanılabilir.
-- **iPhone:** iOS üretici verisi yayınına izin vermediği için bu paket iPhone'dan yayınlanamaz. iPhone desteği ayrı bir tasarım gerektirir.
+- **Dal:** Kod GitHub'da `feature/ble-entegrasyon` dalında. Main'e birleştirilmedi; Firebase geçişi tamamlandıktan sonra entegre edilecek.
+- **Test:** Cihaz testi bir telefonla yapıldı (bkz. Cihaz testi). İki telefonda uygulamadan uygulamaya test henüz yapılmadı.
+- **SOS kimliği uçtan uca korunmuyor:** Paketteki gönderen kimliği Room'a aktarılmıyor. Başka telefondan duyulan SOS'un Room'daki kayıt kimliği konum, mesaj ve 10 dakikalık zaman diliminden üretiliyor (`OutboxRouting.relayId`); SOS'u başlatan telefonun kendi kaydı ise ayrı bir rastgele kimlik alıyor. Bu yüzden aynı SOS, farklı telefonlarda ya da 10 dakikadan uzun sürdüğünde birden çok kayıt oluşturabiliyor.
+- **İzinler:** BLE izinleri ("Yakındaki cihazlar") uygulama ekranında henüz istenmiyor; testlerde elle verildi.
+
+## Sonraki adımlar
+
+1. **SOS kimliğini uçtan uca taşımak:** Kimlik SOS başlatılırken bir kez üretilecek; hem telefonun kendi kaydında hem BLE paketinde kullanılacak, `BleIncoming` üzerinden Room'a ve Firestore'a kadar taşınacak. Gönderen kimliği 4 bayt olduğu için Firestore belge kimliğinde zaman bilgisiyle birlikte kullanılacak. Firebase veri yapısıyla birlikte netleştirilecek.
+2. **Ekran kapalıyken çalışma:** Şu an uygulama açıkken (ve kısa süre arka plandayken) çalışıyor. Uzun süreli yayın ve dinleme için bir *foreground service* (bildirimde "SOS yayında") eklenecek.
+3. **Konumsuz SOS:** Konum alınamazsa SOS hiç başlamıyor. Enkaz altında sık görülebilecek bu durumda da yayın yapılacak; sinyali duyan telefon kendi konumunu ve sinyal gücünü ekleyecek.
+4. **Durum kodları ve afet türü:** "Yaralı", "enkaz altında", kişi sayısı ve afet türü gibi bilgiler paketteki ayrılmış alana (bayraklar baytı). `BleGateway.startSos` türü almadığı için şimdilik `0` gönderiliyor.
+5. **Kurtarıcı modu:** Sinyal gücüyle enkazdaki kişinin yönünü bulma.
+6. **Mesh (röle):** Duyulan sinyalin başka telefonlarca yeniden yayınlanması.
+7. **Şirket kimliği:** `0xFFFF` test kimliği yerine Bluetooth SIG'den alınacak kimlik (bkz. Gizlilik ve güvenlik).
+
+**iPhone:** iOS üretici verisi yayınına izin vermediği için bu paket iPhone'dan yayınlanamaz; iPhone desteği ayrı bir tasarım gerektirir.
